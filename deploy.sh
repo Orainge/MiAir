@@ -101,35 +101,46 @@ echo -e "${GREEN}[2/8] 获取局域网 IP...${NC}"
 get_lan_ip() {
     local ip
 
-    # 最获取默认出网使用的本机源 IP
-    ip=$(ip -4 route get 1.1.1.1 2>/dev/null \
-        | awk '{for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}')
-
+    # 1. 获取默认出网使用的本机源 IP (支持大部分 Linux)
+    ip=$(ip -4 route get 8.8.8.8 2>/dev/null | grep -oP 'src \K\S+' | head -n 1)
     [ -n "$ip" ] && echo "$ip" && return
 
-    # 没有默认路由时，兜底取第一个非 lo/docker/tailscale/veth/br-* 的 IPv4
-    ip=$(ip -o -4 addr show scope global 2>/dev/null \
-        | awk '$2 !~ /^(lo|docker0|tailscale0|veth.*|br-[a-f0-9]+)$/ {
-            split($4,a,"/");
-            print a[1];
-            exit
-        }')
-
+    # 2. 兼容不支持 grep -P 的系统 (如 OpenWRT)
+    ip=$(ip -4 route get 8.8.8.8 2>/dev/null | awk '/src/ {for (i=1; i<=NF; i++) if ($i == "src") print $(i+1)}')
     [ -n "$ip" ] && echo "$ip" && return
 
+    # 3. 没有默认路由时，兜底取第一个非 lo/docker/tailscale/veth/br-/wg/tun 的 IPv4
+    ip=$(ip -o -4 addr show scope global 2>/dev/null | awk '$2 !~ /^(lo|docker[0-9]*|tailscale[0-9]*|veth.*|br-[a-f0-9]+|wg[0-9]*|tun[0-9]*|tap[0-9]*)$/ {split($4, a, "/"); print a[1]; exit}')
+    [ -n "$ip" ] && echo "$ip" && return
+
+    # 4. 如果 ip 命令不可用，尝试 hostname -I
+    if command -v hostname &> /dev/null; then
+        ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [ -n "$ip" ] && echo "$ip" && return
+    fi
+
+    # 兜底
     echo "127.0.0.1"
 }
 
 HOST_IP=$(get_lan_ip)
-if [ "$HOST_IP" = "127.0.0.1" ]; then
-    echo -e "${YELLOW}无法自动检测到有效的局域网 IP，请手动输入：${NC}"
-    read -p "请输入宿主机 IP 地址: " HOST_IP
-    while [ -z "$HOST_IP" ]; do
-        echo -e "${RED}IP 地址不能为空，请重新输入${NC}"
-        read -p "请输入宿主机 IP 地址: " HOST_IP
+
+if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; then
+    echo -e "${YELLOW}警告: 无法自动检测到有效的局域网 IP。${NC}"
+    read -p "请输入宿主机真实的局域网 IP 地址: " HOST_IP
+    while [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; do
+        echo -e "${RED}IP 地址无效，请重新输入${NC}"
+        read -p "请输入宿主机真实的局域网 IP 地址: " HOST_IP
     done
+else
+    echo -e "${GREEN}检测到可能的宿主机局域网 IP: ${YELLOW}$HOST_IP${NC}"
+    echo "注意: 此 IP 将用于接收 DLNA 控制端的回调。如果此机器有多个网卡或运行在复杂网络中，请确保该 IP 是其他设备可以访问的内网 IP。"
+    read -p "确认使用此 IP 吗？如需修改请输入正确 IP，否则直接回车确认 [$HOST_IP]: " USER_IP
+    if [ -n "$USER_IP" ]; then
+        HOST_IP="$USER_IP"
+    fi
 fi
-echo -e "${GREEN}✓ 宿主机 IP: $HOST_IP${NC}"
+echo -e "${GREEN}✓ 最终确认宿主机 IP: $HOST_IP${NC}"
 
 # ============================================
 # 步骤 3: 检查并下载 MiAir 代码
