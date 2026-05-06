@@ -1,5 +1,6 @@
 """小爱音箱控制模块"""
 
+import asyncio
 import json
 import logging
 
@@ -9,6 +10,7 @@ from miair.const import DEFAULT_AUDIO_ID, NEED_USE_PLAY_MUSIC_API
 
 log = logging.getLogger("miair")
 
+TRANSPORT_STATE_PAUSED_CODE = 2
 
 class SpeakerController:
     """单个小爱音箱的控制接口"""
@@ -68,12 +70,19 @@ class SpeakerController:
                     return False
             return False
 
-    async def pause(self) -> bool:
+    async def pause(self, ensure=False) -> bool:
         """暂停播放"""
         try:
             await self.auth.ensure_login()
             ret = await self.auth.mina_service.player_pause(self.device_id)
             log.info(f"player_pause device_id={self.device_id} ret={ret}")
+            if ensure:
+                # 获取暂停后的状态，如果状态还为播放，尝试调用 stop()
+                status = await asyncio.wait_for(self.get_status(), timeout=10)
+                if status["status"] != TRANSPORT_STATE_PAUSED_CODE:
+                    # 状态不等于 paused
+                    ret = await self.auth.mina_service.player_stop(self.device_id)
+                    log.info(f"player_stop device_id={self.device_id} ret={ret}")
             return True
         except Exception as e:
             log.error(f"pause 失败: {e}")
@@ -87,6 +96,13 @@ class SpeakerController:
                 try:
                     await self.auth.ensure_login()
                     await self.auth.mina_service.player_pause(self.device_id)
+                    if ensure:
+                        # 获取暂停后的状态，如果状态还为播放，尝试调用 stop()
+                        status = await asyncio.wait_for(self.get_status(), timeout=10)
+                        if status["status"] != TRANSPORT_STATE_PAUSED_CODE:
+                            # 状态不等于 paused
+                            ret = await self.auth.mina_service.player_stop(self.device_id)
+                            log.info(f"player_stop device_id={self.device_id} ret={ret}")
                     return True
                 except Exception as e2:
                     log.error(f"重新登录后 pause 仍然失败: {e2}")

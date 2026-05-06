@@ -1218,12 +1218,14 @@ class DeviceServer:
                             idle = True
                     elif (
                         renderer.current_uri
-                        and renderer.transport_state == TRANSPORT_STATE_STOPPED
+                        and (renderer.transport_state == TRANSPORT_STATE_STOPPED
+                             or renderer.transport_state == TRANSPORT_STATE_PAUSED)
                         and renderer._last_control_time > 0
                         and (time.time() - renderer._last_control_time) > 60
                         and renderer.event_manager
                         and not renderer.event_manager.has_subscribers()
                     ):
+                        # TRANSPORT_STATE_PAUSED: 暂停后等到 renderer 过期即可，如果控制端在线，会自动向服务端续订
                         idle = True
 
                     if idle:

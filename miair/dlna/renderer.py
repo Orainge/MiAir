@@ -250,7 +250,7 @@ class DLNARenderer:
             if not self.speaker:
                 self.transport_state = TRANSPORT_STATE_PAUSED
                 return True
-            success = await self.speaker.pause()
+            success = await self.speaker.pause(ensure=True)
             if success:
                 # 累计播放时间
                 if self._play_start_time > 0:
