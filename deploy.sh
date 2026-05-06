@@ -126,16 +126,16 @@ get_lan_ip() {
 HOST_IP=$(get_lan_ip)
 
 if [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; then
-    echo -e "${YELLOW}警告: 无法自动检测到有效的局域网 IP。${NC}"
-    read -p "请输入宿主机真实的局域网 IP 地址: " HOST_IP
+    echo -e "${YELLOW}警告: 无法自动获取到有效的局域网 IP。${NC}"
+    read -p "请输入宿主机的局域网 IP 地址: " HOST_IP
     while [ -z "$HOST_IP" ] || [ "$HOST_IP" = "127.0.0.1" ]; do
         echo -e "${RED}IP 地址无效，请重新输入${NC}"
-        read -p "请输入宿主机真实的局域网 IP 地址: " HOST_IP
+        read -p "请输入宿主机的局域网 IP 地址: " HOST_IP
     done
 else
-    echo -e "${GREEN}检测到可能的宿主机局域网 IP: ${YELLOW}$HOST_IP${NC}"
-    echo "注意: 此 IP 将用于接收 DLNA 控制端的回调。如果此机器有多个网卡或运行在复杂网络中，请确保该 IP 是其他设备可以访问的内网 IP。"
-    read -p "确认使用此 IP 吗？如需修改请输入正确 IP，否则直接回车确认 [$HOST_IP]: " USER_IP
+    echo -e "${GREEN}获取到的局域网 IP 地址: ${YELLOW}$HOST_IP${NC}"
+    echo "这个局域网 IP 地址是正确的吗？"
+    read -p "如果此局域网 IP 正确，请按下回车确认使用，否则请输入正确的局域网 IP 地址并按下回车。" USER_IP
     if [ -n "$USER_IP" ]; then
         HOST_IP="$USER_IP"
     fi
