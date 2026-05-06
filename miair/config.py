@@ -69,7 +69,7 @@ class Config:
     # 默认音量 (1-100)
     default_volume: int = 38
     # 实验性功能：跟随设备当前音量
-    follow_device_volume: bool = False
+    follow_device_volume: bool = True
     # 语音控制
     enable_voice_control: bool = False
     # 自动重启（当登录失败或服务异常时）

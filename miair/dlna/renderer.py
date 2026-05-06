@@ -77,6 +77,8 @@ class DLNARenderer:
         # 检测 "音箱已停而渲染器被强制保持PAUSED" 的起始时间
         # 当此模式持续超过阈值时，判定控制端已断开并重置为空闲
         self._stuck_paused_since: float = 0.0
+        # 标记是否已应用过默认音量（避免切歌时重复重置）
+        self._volume_initialized: bool = False
 
     # 视频格式扩展名列表
     VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.flv', '.wmv', '.m4v', '.3gp', '.ts', '.mts', '.m2ts'}
@@ -226,9 +228,13 @@ class DLNARenderer:
         return success
 
     async def _apply_default_volume(self):
-        """播放开始后应用默认音量"""
+        """播放开始后应用默认音量（仅首次连接时应用，切歌不重置）"""
         try:
             if getattr(self.config, 'follow_device_volume', False):
+                return
+            
+            # 仅首次播放时应用默认音量，避免切歌时覆盖用户调整的音量
+            if self._volume_initialized:
                 return
             
             default_vol = getattr(self.config, 'default_volume', 50)
@@ -239,6 +245,7 @@ class DLNARenderer:
             if self.speaker:
                 await self.speaker.set_volume(default_vol)
                 self.volume = default_vol
+                self._volume_initialized = True
                 log.info(f"[{self.friendly_name}] 已应用默认音量: {default_vol}%")
                 await self.notify_state_change()
         except Exception as e:
@@ -258,6 +265,8 @@ class DLNARenderer:
                     self._play_start_time = 0.0
                 self.transport_state = TRANSPORT_STATE_PAUSED
                 self._user_stopped = True
+                # 启动 idle 超时计时器，以便控制端断开后可以正常重置
+                self._stuck_paused_since = time.time()
                 # 取消播放状态检查任务
                 if self._play_check_task:
                     self._play_check_task.cancel()
@@ -306,6 +315,7 @@ class DLNARenderer:
             self._track_duration = 0.0
             self._user_stopped = False
             self._stuck_paused_since = 0.0
+            self._volume_initialized = False
             if self._play_check_task:
                 self._play_check_task.cancel()
                 self._play_check_task = None

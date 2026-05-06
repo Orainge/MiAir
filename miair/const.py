@@ -1,5 +1,8 @@
 """MiAir 常量定义"""
 
+VERSION = "0.3.7-alpha"
+
+
 # SSDP 相关
 SSDP_ADDR = "239.255.255.250"
 SSDP_PORT = 1900
@@ -40,6 +43,7 @@ NEED_USE_PLAY_MUSIC_API = [
     "X8F",
     "X4B",
     "LX05",
+    "LX05A",
     "OH2",
     "OH2P",
     "X6A",

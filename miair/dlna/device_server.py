@@ -1135,6 +1135,9 @@ class DeviceServer:
         # 发送初始事件 (参照 MaCast: 在后台发送完整状态，不阻塞 SUBSCRIBE 响应)
         renderer = self.renderers.get(udn)
         if renderer:
+            # 客户端建立新订阅，视为新会话或重连，重置音量初始化标志
+            # 以便在接下来的播放中重新应用默认音量
+            renderer._volume_initialized = False
             task = asyncio.get_running_loop().create_task(
                 self._send_initial_event(event_manager, sid, renderer, service)
             )

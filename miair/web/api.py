@@ -10,6 +10,8 @@ from aiohttp import web
 import asyncio
 
 from miair.config import Config
+from miair.const import VERSION
+
 
 log = logging.getLogger("miair")
 
@@ -76,6 +78,7 @@ def create_web_app(config: Config, app_instance) -> web.Application:
         need_device_list = request.query.get("need_device_list", "false") == "true"
 
         data = {
+            "version": VERSION,
             "hostname": config.hostname,
             "dlna_port": config.dlna_port,
             "web_port": config.web_port,
@@ -248,7 +251,7 @@ def create_web_app(config: Config, app_instance) -> web.Application:
     async def handle_status(request):
         """系统状态"""
         return web.json_response({
-            "version": "0.1.0",
+            "version": VERSION,
             "dlna_running": app_instance.dlna_running,
             "renderers_count": len(app_instance.renderers),
             "hostname": config.hostname,
